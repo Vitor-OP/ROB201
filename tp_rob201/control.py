@@ -10,9 +10,17 @@ def reactive_obst_avoid(lidar):
     lidar : placebot object with lidar data
     """
     # TODO for TP1
+    lidar_values = lidar.get_sensor_values()
+    lidar_angles = lidar.get_ray_angles()
+    
+    middle_index = len(lidar_values) // 2
 
-    speed = 0.0
-    rotation_speed = 0.0
+    if np.any(lidar_values[middle_index - 5:middle_index + 5:2] < 250):
+        speed = -0.05
+        rotation_speed = 0.5
+    else:
+        speed = 0.3
+        rotation_speed = 0
 
     command = {"forward": speed,
                "rotation": rotation_speed}
