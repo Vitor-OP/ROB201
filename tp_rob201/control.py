@@ -10,6 +10,8 @@ def reactive_obst_avoid(lidar):
     """
     
     # TODO for TP1
+    # I did went a bit overkill, where where asked a simple obstacle avoidance with random rotation,
+    # I instead implemented a "follow the wall" algorithm, where the robot will try to follow the wall on its left, without collinding with it.
     
     lidar_values = lidar.get_sensor_values()
     lidar_angles = lidar.get_ray_angles()
@@ -37,28 +39,9 @@ def reactive_obst_avoid(lidar):
             rotation_speed = 0.2
         
         else: # no wall in left side
-            # if np.all(lidar_values[middle_index + side_index - int(lidar_len*1):middle_index + side_index + int(lidar_len*0.2)]) > 200: 
                 print('2.1', end='\r')
                 speed = 0.4
                 rotation_speed = -1
-            # else:
-            #     print('2.2', end='\r')
-            #     speed = 0.1
-            #     rotation_speed = -1
-    
-    # # Obstacle on right side, turn left
-    # elif np.any(lidar_values[middle_index - int(lidar_len*0.1):middle_index - int(lidar_len*0.05)] < 50):
-    #     print('3')
-    #     speed = 0.1
-    #     rotation_speed = 0.3
-    
-    # # Obstacle on left side, turn right
-    # elif np.any(lidar_values[middle_index + int(lidar_len*0.05):middle_index + int(lidar_len*0.1)] < 50):
-    #     print('4')
-    #     speed = 0.1
-    #     rotation_speed = 0.3
-        
-    # print(lidar_values[side_index], lidar_values[middle_index], lidar_values[lidar_len - side_index])
 
     command = {"forward": speed,
                "rotation": rotation_speed}
