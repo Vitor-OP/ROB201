@@ -26,22 +26,24 @@ def reactive_obst_avoid(lidar):
     
     # Frontal collision avoidance (low range, big field of view)
     if np.any(lidar_values[middle_index - int(lidar_len*0.1):middle_index + int(lidar_len*0.1)] < 40):
-        print('1.0', end='\r')
         speed = -0.1
         rotation_speed = -0.4
     
+    # Far from any wall, just go forward max speed (made taking into account the start of the simulation)
+    elif np.all(lidar_values[:] > 80):
+        speed = 1
+        rotation_speed = 0
+    
     # Foward going (no obstacle in front)
-    else: 
+    else:
         # Slighltly turn right if going forward but close to a wall on the left
-        if np.any(lidar_values[middle_index + int(lidar_len*0.05):middle_index + int(lidar_len*0.15)]) < 75: 
-            print('2.0', end='\r')
+        if np.any(lidar_values[middle_index + int(lidar_len*0.1):middle_index + int(lidar_len*0.15)]) < 75: 
             speed = 0.3
             rotation_speed = 0.2
         
         else: # no wall in left side
-                print('2.1', end='\r')
-                speed = 0.4
-                rotation_speed = -1
+                speed = -0.3
+                rotation_speed = -0.75
 
     command = {"forward": speed,
                "rotation": rotation_speed}
