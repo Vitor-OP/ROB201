@@ -76,16 +76,14 @@ def reactive_obst_avoid(lidar):
         
     # If there is nothing in front and no wall on the left, follow the wall turning right
     elif not is_front_wall and not is_left_wall:
-        rotation_speed = 0.3
-        speed = 0.3
+        rotation_speed = 0.325
+        speed = 0.25
     
     # Else, should not happen in this logic
     else:
         rotation_speed = 1
         speed = 0
         
-    
-
     command = {"forward": speed,
                "rotation": rotation_speed}
 
@@ -104,26 +102,27 @@ def potential_field_control(lidar, current_pose, goal_pose):
     """
     # TODO for TP2
     
+    # To calculate the forces applied in the robot path, we will get the vector to the closest wall and  te vector to the goal.
+    
+    #                 225   180    135
+    #                  FL    F    FR
+    #                        
+    #                   \    |    /
+    #                        ^
+    #            270 L ---  [@]  ---  R 90
+    #                      robot
+    #                   /    |    \
+    # 
+    #                  BL    B     BR
+    #                315     0     45
+    
     lidar_values = lidar.get_sensor_values()
     lidar_angles = lidar.get_ray_angles()
     lidar_len = len(lidar_values)
-
-    # Define the potential field
-    potential_field = np.zeros_like(lidar_values)
-
-    # Compute the attractive potential field
-    attractive_potential = np.sqrt((goal_pose[0] - current_pose[0])**2 + (goal_pose[1] - current_pose[1])**2)
-
-    # Compute the repulsive potential field based on lidar data
-    repulsive_potential = 1.0 / lidar.get_sensor_values()
-
-    # Combine the attractive and repulsive potential fields
-    potential_field = attractive_potential + repulsive_potential
-
-    # Compute the gradient of the potential field
-    gradient = np.gradient(potential_field)
     
-    # print("Gradient: ", gradient)
+    closest_wall = np.min(lidar_values)
+    closest_wall_index = np.argmin(lidar_values)
+
 
     # Compute the command based on the gradient
     command = {"forward": gradient[0],
