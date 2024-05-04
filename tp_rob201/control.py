@@ -10,8 +10,7 @@ def reactive_obst_avoid(lidar):
     """
     
     # TODO for TP1
-    # I did went a bit overkill, where where asked a simple obstacle avoidance with random rotation,
-    # I instead implemented a "follow the wall" algorithm, where the robot will try to follow the wall on its left, without collinding with it.
+    # Implemented a "follow the wall" algorithm, where the robot will try to follow the wall on its left, without collinding with it.
     
     lidar_values = lidar.get_sensor_values()
     lidar_angles = lidar.get_ray_angles()
@@ -30,8 +29,8 @@ def reactive_obst_avoid(lidar):
     right_back_index = lidar_len // 8 # RB
     left_back_index = lidar_len - right_back_index # LB
     
-    right_front_index = right_index + right_back_index # RF
-    left_front_index = left_index - left_back_index # LF
+    # right_front_index = right_index + right_back_index # RF
+    # left_front_index = left_index - left_back_index # LF
     
     #                 225   180    135
     #                  FL    F    FR
@@ -51,27 +50,36 @@ def reactive_obst_avoid(lidar):
     
     no_wall = np.all(lidar_values[:] > 50)
     
+    
+    ### WALL FOLLOWING ALGORITHM ###
+    
+    # If there is no wall, go random    
     if no_wall:
         # No wall, go random and find a wall
         rotation_speed = random.uniform(-1, 1)
         speed = 0.3
     
+    # If there is a wall in front and no wall on the left, turn right going around the wall
     elif is_front_wall and not is_left_wall:
         rotation_speed = -0.3
         speed = -0.15
         
+    # If there is a wall in front and on the left, turn right but without moving
     elif is_front_wall and is_left_wall:
         rotation_speed = -0.3
         speed = 0
-        
-    elif not is_front_wall and is_left_wall: # Follow the wall slightly turning left
+    
+    # If there is nothing in front but there is a wall left, follow the wall slightly turning left
+    elif not is_front_wall and is_left_wall: 
         rotation_speed = 0.05
         speed = 0.3
         
+    # If there is nothing in front and no wall on the left, follow the wall turning right
     elif not is_front_wall and not is_left_wall:
         rotation_speed = 0.3
         speed = 0.3
     
+    # Else, should not happen in this logic
     else:
         rotation_speed = 1
         speed = 0
