@@ -47,7 +47,7 @@ class MyRobotSlam(RobotAbstract):
         """
         Main control function executed at each time step
         """
-        return self.control_tp2()
+        return self.control_tp1()
 
     def control_tp1(self):
         """

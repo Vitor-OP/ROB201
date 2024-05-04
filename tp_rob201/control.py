@@ -21,29 +21,62 @@ def reactive_obst_avoid(lidar):
     # Lidar values are right, middle, left
     # positive rotation is left, negative is right
     
-    middle_index = lidar_len // 2 # middle index is the front of the robot
-    side_index = lidar_len // 4 # side index is the right of the robot (and middle + side is the left of the robot)
+    front_index = lidar_len // 2 # F (middle of the matrix)
+    back_index = 0 # B
     
-    # Frontal collision avoidance (low range, big field of view)
-    if np.any(lidar_values[middle_index - int(lidar_len*0.1):middle_index + int(lidar_len*0.1)] < 40):
-        speed = -0.1
-        rotation_speed = -0.4
+    right_index = lidar_len // 4 # R
+    left_index = front_index + right_index # L
     
-    # Far from any wall, just go forward max speed (made taking into account the start of the simulation)
-    elif np.all(lidar_values[:] > 80):
-        speed = 1
-        rotation_speed = 0
+    right_back_index = lidar_len // 8 # RB
+    left_back_index = lidar_len - right_back_index # LB
     
-    # Foward going (no obstacle in front)
-    else:
-        # Slighltly turn right if going forward but close to a wall on the left
-        if np.any(lidar_values[middle_index + int(lidar_len*0.1):middle_index + int(lidar_len*0.15)]) < 75: 
-            speed = 0.3
-            rotation_speed = 0.2
+    right_front_index = right_index + right_back_index # RF
+    left_front_index = left_index - left_back_index # LF
+    
+    #                 225   180    135
+    #                  FL    F    FR
+    #                        
+    #                   \    |    /
+    #                        ^
+    #            270 L ---  [@]  ---  R 90
+    #                      robot
+    #                   /    |    \
+    # 
+    #                  BL    B     BR
+    #                315     0     45
+    
+    is_front_wall = np.any(lidar_values[front_index - int(lidar_len*0.15):front_index + int(lidar_len*0.15)] < 30)
+    
+    is_left_wall = True if lidar_values[left_index] < 30 else False
+    
+    no_wall = np.all(lidar_values[:] > 50)
+    
+    if no_wall:
+        # No wall, go random and find a wall
+        rotation_speed = random.uniform(-1, 1)
+        speed = 0.3
+    
+    elif is_front_wall and not is_left_wall:
+        rotation_speed = -0.3
+        speed = -0.15
         
-        else: # no wall in left side
-                speed = -0.3
-                rotation_speed = -0.75
+    elif is_front_wall and is_left_wall:
+        rotation_speed = -0.3
+        speed = 0
+        
+    elif not is_front_wall and is_left_wall: # Follow the wall slightly turning left
+        rotation_speed = 0.05
+        speed = 0.3
+        
+    elif not is_front_wall and not is_left_wall:
+        rotation_speed = 0.3
+        speed = 0.3
+    
+    else:
+        rotation_speed = 1
+        speed = 0
+        
+    
 
     command = {"forward": speed,
                "rotation": rotation_speed}
