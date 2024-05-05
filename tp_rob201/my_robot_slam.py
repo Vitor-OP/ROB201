@@ -67,6 +67,7 @@ class MyRobotSlam(RobotAbstract):
         pose = self.odometer_values()
         
         goal = [-520, -480, 0]
+        # goal = [-350, 35, 0]
 
         # Compute new command speed to perform obstacle avoidance
         command = potential_field_control(self.lidar(), pose, goal)
