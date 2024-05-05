@@ -23,6 +23,7 @@ if __name__ == '__main__':
     # odometer_params.param4 = 0.01  # 0.01 # degree/degree, influence of rotation to rotation
 
     my_robot = MyRobotSlam(lidar_params=lidar_params, odometer_params=odometer_params)
+
     my_world = MyWorld(robot=my_robot)
     simulator = Simulator(the_world=my_world,
                           use_keyboard=False)

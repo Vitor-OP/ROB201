@@ -3,6 +3,84 @@
 import random
 import numpy as np
 
+def polar_to_cartesian(r, theta):
+    """
+    Convert polar coordinates to cartesian
+    r : float, radius
+    theta : float, angle in radians
+    """
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    return np.array([x, y])
+
+def cartesian_to_polar(x, y):
+    """
+    Convert cartesian coordinates to polar
+    x : float, x coordinate
+    y : float, y coordinate
+    """
+    r = np.sqrt(x**2 + y**2)
+    theta = np.arctan2(y, x)
+    return r, theta
+
+def d_goal_current_pose(p1, p2):
+    """
+    Calculate the distance between goal and current pose, knowing that they contain the angle in the third index
+    p1 : np.array, point 1
+    p2 : np.array, point 2
+    """
+    p1 = np.array([p1[0], p1[1]])
+    p2 = np.array([p2[0], p2[1]])
+    
+    return np.linalg.norm(p1 - p2)
+
+def gradient_calculator(lidar_values, lidar_angles, current_pose, goal_pose, K_obs = 1, K_goal = 1, d_safe = 200):
+    
+    """
+    Calculate the gradient of the current robot location in the potential field
+    lidar_values : np.array, lidar values
+    lidar_angles : np.array, lidar angles
+    current_pose : [x, y, theta] nparray, current pose in odom or world frame
+    goal_pose : [x, y, theta] nparray, target pose in odom or world frame
+    """
+    
+    """
+    Attrative gradient:
+            K_goal
+    ∇f = ------------ (q_goal - q)
+         d(q, q_goal)
+    
+    
+    
+    Repulsive gradient:
+              K_obs
+    ∇f = --------------- * ( (1 / d(q, q_obs)) - (1 / d_safe) ) * (q_obs - q)
+           d^3(q, q_obs)
+           
+    """
+    
+    ## Calculate the repulsive gradient
+    
+    # Calculate the vector to the closest wall
+    closest_wall_index = np.argmin(lidar_values)
+    closest_wall_distance = lidar_values[closest_wall_index]
+    closest_wall_angle = lidar_angles[closest_wall_index]
+    wall_vector = polar_to_cartesian(closest_wall_distance, closest_wall_angle)
+    
+    # The repulsive gradient
+    # The original formula was d^3, but i found it better to be d^2
+    repulsive_gradient = K_obs / (closest_wall_distance**2) * (1/closest_wall_distance - 1/d_safe) * wall_vector
+    
+    ## Calculate the attractive gradient
+    
+    # Calculate the vector to the goal
+    goal_vector = np.array([goal_pose[0] - current_pose[0], goal_pose[1] - current_pose[1]])
+    
+    attractive_gradient = K_goal / np.linalg.norm(goal_vector) * goal_vector
+
+    # Return the total gradient
+    return attractive_gradient + repulsive_gradient
+
 def reactive_obst_avoid(lidar):
     """
     Simple obstacle avoidance
@@ -11,14 +89,28 @@ def reactive_obst_avoid(lidar):
     
     # TODO for TP1
     # Implemented a "follow the wall" algorithm, where the robot will try to follow the wall on its left, without collinding with it.
-    
-    lidar_values = lidar.get_sensor_values()
-    lidar_angles = lidar.get_ray_angles()
-    lidar_len = len(lidar_values)
+    # The way i handled the indexes where very bad, i reallized only when working in the potential field control.
+    # I directly used the index instead of rellying on the angles values in lidar_anglesm, the logic is right bellow.
     
     # INDEX:
     # Lidar values are right, middle, left
     # positive rotation is left, negative is right
+    
+    #             len//2 + len//8    len//2     len//4 + len //8
+    #                             FL    F    FR
+    #                                   
+    #                              \    |    /
+    #                                   ^
+    #     len//2 + len//4   270 L ---  [@]  ---  R len//4
+    #                                 robot
+    #                              /    |    \
+    #            
+    #                             BL    B     BR
+    #                  len - len//8     0     len//8
+    
+    lidar_values = lidar.get_sensor_values()
+    lidar_angles = lidar.get_ray_angles()
+    lidar_len = len(lidar_values)
     
     front_index = lidar_len // 2 # F (middle of the matrix)
     back_index = 0 # B
@@ -29,20 +121,6 @@ def reactive_obst_avoid(lidar):
     right_back_index = lidar_len // 8 # RB
     left_back_index = lidar_len - right_back_index # LB
     
-    # right_front_index = right_index + right_back_index # RF
-    # left_front_index = left_index - left_back_index # LF
-    
-    #                 225   180    135
-    #                  FL    F    FR
-    #                        
-    #                   \    |    /
-    #                        ^
-    #            270 L ---  [@]  ---  R 90
-    #                      robot
-    #                   /    |    \
-    # 
-    #                  BL    B     BR
-    #                315     0     45
     
     is_front_wall = np.any(lidar_values[front_index - int(lidar_len*0.15):front_index + int(lidar_len*0.15)] < 30)
     
@@ -50,16 +128,14 @@ def reactive_obst_avoid(lidar):
     
     no_wall = np.all(lidar_values[:] > 50)
     
-    
     ### WALL FOLLOWING ALGORITHM ###
     
-    # If there is no wall, go random    
+    # If there is no wall, go random and find a wall    
     if no_wall:
-        # No wall, go random and find a wall
         rotation_speed = random.uniform(-1, 1)
         speed = 0.3
     
-    # If there is a wall in front and no wall on the left, turn right going around the wall
+    # If there is a wall in front and no wall on the left, turn right
     elif is_front_wall and not is_left_wall:
         rotation_speed = -0.3
         speed = -0.15
@@ -90,6 +166,7 @@ def reactive_obst_avoid(lidar):
     return command
 
 
+
 def potential_field_control(lidar, current_pose, goal_pose):
     """
     Control using potential field for goal reaching and obstacle avoidance
@@ -102,30 +179,40 @@ def potential_field_control(lidar, current_pose, goal_pose):
     """
     # TODO for TP2
     
-    # To calculate the forces applied in the robot path, we will get the vector to the closest wall and  te vector to the goal.
+    # Calculate the gradient
+    gradient = gradient_calculator(lidar.get_sensor_values(), lidar.get_ray_angles(), current_pose, goal_pose, K_obs=3000, K_goal=1, d_safe=400)
     
-    #                 225   180    135
-    #                  FL    F    FR
-    #                        
-    #                   \    |    /
-    #                        ^
-    #            270 L ---  [@]  ---  R 90
-    #                      robot
-    #                   /    |    \
-    # 
-    #                  BL    B     BR
-    #                315     0     45
+    # Now we have the gradient, we can calculate the command to move the robot
+    gradient_r, gradient_theta = cartesian_to_polar(gradient[0], gradient[1])
     
-    lidar_values = lidar.get_sensor_values()
-    lidar_angles = lidar.get_ray_angles()
-    lidar_len = len(lidar_values)
+    # Force the result angle to be in the interval [-pi, pi]
+    if((gradient_theta - current_pose[2]) > np.pi): gradient_theta -= 2*np.pi
+    if((gradient_theta - current_pose[2]) < -np.pi): gradient_theta += 2*np.pi
     
-    closest_wall = np.min(lidar_values)
-    closest_wall_index = np.argmin(lidar_values)
+    # Calculate the rotation speed
+    rotation_speed = (gradient_theta - current_pose[2]) / np.pi
+    
+    # Limit the rotation speed to -1, 1
+    if rotation_speed > 1:
+        rotation_speed = 1
+    elif rotation_speed < -1:
+        rotation_speed = -1
+    
+    # Making the speed inversely proportional to the need to turn (if it needs to turn a lot, speed gets negative to go in reverse)
+    dist_to_goal = d_goal_current_pose(current_pose, goal_pose)
+    if dist_to_goal > 70:
+        speed = (0.6 - abs(rotation_speed))*0.6
+        
+    # If the robot is close to the goal, slow down proportionally to the distance
+    else: 
+        speed = (0.6 - abs(rotation_speed))*(dist_to_goal/70)*0.6
 
-
-    # Compute the command based on the gradient
-    command = {"forward": gradient[0],
-               "rotation": gradient[1]}
-
+    # If the robot is very close to the goal, stops
+    if dist_to_goal < 10:
+        speed = 0
+        rotation_speed = 0
+        
+    command = {"forward": speed,
+                "rotation": rotation_speed}
+    
     return command
