@@ -86,7 +86,7 @@ def gradient_calculator_closest_wall(lidar_values, lidar_angles, current_pose, g
 
 def gradient_calculator_180field_of_lidar(lidar_values, lidar_angles, current_pose, goal_pose, K_obs = 1, K_goal = 1, d_safe = 300):
     """
-    Calculate the gradient of the current robot location in the potential field using the front half of the lidar values
+    Calculate the gradient of the current robot location in the potential field using the front half of the lidar values (acctually a bit more than 180 degrees)
     """
     
     # Calculate the vector to the goal
@@ -100,7 +100,7 @@ def gradient_calculator_180field_of_lidar(lidar_values, lidar_angles, current_po
     robot_size = 20
     
     # Consider only the front half of the lidar values
-    min_angle_index = np.argmin(np.abs(lidar_angles - (-np.pi/2*1.17)))
+    min_angle_index = np.argmin(np.abs(lidar_angles - (-np.pi/2*1.17))) # 1.17 is 210/180 and 210 is the human field of view (there is no real reason to use 210)
     max_angle_index = np.argmin(np.abs(lidar_angles - (np.pi/2*1.17)))
     front_values = lidar_values[min_angle_index:max_angle_index+1]
     front_angles = lidar_angles[min_angle_index:max_angle_index+1]
@@ -116,7 +116,7 @@ def gradient_calculator_180field_of_lidar(lidar_values, lidar_angles, current_po
         # Calculate repulsive gradient contribution from this obstacle
         if effective_distance < d_safe:
             # Modify the repulsive contribution based on the angle
-            angle_weight = 1 / (abs(angle) + 1)**1.5  # make values closer to the front more important
+            angle_weight = 1 / (abs(angle) + 1)**1.5  # make values closer to the literal front more relevant for repulsion
             repulsive_contribution = K_obs * angle_weight / (effective_distance**2) * (1/effective_distance - 1/d_safe) * wall_vector
             total_repulsive_gradient += repulsive_contribution
 
