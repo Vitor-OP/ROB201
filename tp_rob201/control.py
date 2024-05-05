@@ -34,7 +34,7 @@ def d_goal_current_pose(p1, p2):
     
     return np.linalg.norm(p1 - p2)
 
-def gradient_calculator(lidar_values, lidar_angles, current_pose, goal_pose, K_obs = 1, K_goal = 1, d_safe = 200):
+def gradient_calculator(lidar_values, lidar_angles, current_pose, goal_pose, K_obs = 1, K_goal = 1, d_safe = 300):
     
     """
     Calculate the gradient of the current robot location in the potential field
@@ -54,7 +54,7 @@ def gradient_calculator(lidar_values, lidar_angles, current_pose, goal_pose, K_o
     
     Repulsive gradient:
               K_obs
-    ∇f = --------------- * ( (1 / d(q, q_obs)) - (1 / d_safe) ) * (q_obs - q)
+    ∇f = --------------- * ( (1 / d(q, q_obs)) - (1 / d_safe) ) * (q_obs - q))
            d^3(q, q_obs)
            
     """
@@ -68,8 +68,12 @@ def gradient_calculator(lidar_values, lidar_angles, current_pose, goal_pose, K_o
     wall_vector = polar_to_cartesian(closest_wall_distance, closest_wall_angle)
     
     # The repulsive gradient
-    # The original formula was d^3, but i found it better to be d^2
-    repulsive_gradient = K_obs / (closest_wall_distance**2) * (1/closest_wall_distance - 1/d_safe) * wall_vector
+    # The original formula was d^3, but i found it better to be d^2 and took in consideration the robot size as a horizontal shift to the function
+    robot_size = 30
+    if closest_wall_distance - robot_size <= 0:
+        robot_size = closest_wall_distance - 1
+    
+    repulsive_gradient = K_obs / ((closest_wall_distance - robot_size)**2) * (1/(closest_wall_distance - robot_size) - 1/d_safe) * wall_vector
     
     ## Calculate the attractive gradient
     
@@ -180,7 +184,7 @@ def potential_field_control(lidar, current_pose, goal_pose):
     # TODO for TP2
     
     # Calculate the gradient
-    gradient = gradient_calculator(lidar.get_sensor_values(), lidar.get_ray_angles(), current_pose, goal_pose, K_obs=3000, K_goal=1, d_safe=400)
+    gradient = gradient_calculator(lidar.get_sensor_values(), lidar.get_ray_angles(), current_pose, goal_pose, K_obs=400, K_goal=50, d_safe=300)
     
     # Now we have the gradient, we can calculate the command to move the robot
     gradient_r, gradient_theta = cartesian_to_polar(gradient[0], gradient[1])
@@ -200,12 +204,13 @@ def potential_field_control(lidar, current_pose, goal_pose):
     
     # Making the speed inversely proportional to the need to turn (if it needs to turn a lot, speed gets negative to go in reverse)
     dist_to_goal = d_goal_current_pose(current_pose, goal_pose)
-    if dist_to_goal > 70:
-        speed = (0.6 - abs(rotation_speed))*0.6
+    if dist_to_goal > 60:
+        speed = (0.6 - abs(rotation_speed))*0.5
         
     # If the robot is close to the goal, slow down proportionally to the distance
     else: 
-        speed = (0.6 - abs(rotation_speed))*(dist_to_goal/70)*0.6
+        speed = (0.6 - abs(rotation_speed))*(dist_to_goal/100)*0.5
+        rotation_speed = rotation_speed * 0.5
 
     # If the robot is very close to the goal, stops
     if dist_to_goal < 10:
