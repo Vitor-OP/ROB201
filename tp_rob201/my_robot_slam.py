@@ -48,12 +48,12 @@ class MyRobotSlam(RobotAbstract):
         Main control function executed at each time step
         """
         
-        # self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
-        self.corrected_pose = self.odometer_values()
+        # self.corrected_pose = self.odometer_values()
+        self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
         
         self.tiny_slam.update_map(self.lidar(), self.corrected_pose)
         
-        return self.control_tp1()
+        return self.control_tp2()
 
     def control_tp1(self):
         """
@@ -68,7 +68,8 @@ class MyRobotSlam(RobotAbstract):
         """
         Control function for TP2
         """
-        pose = self.odometer_values()
+        # pose = self.odometer_values()
+        pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
         
         # goal = [-520, -480, 0]
         goal = [-350, 35, 0]

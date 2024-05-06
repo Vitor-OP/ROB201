@@ -39,7 +39,32 @@ class TinySlam:
                         use self.odom_pose_ref if not given
         """
         # TODO for TP4
-        corrected_pose = odom_pose
+        
+        # if odom_pose_ref is not given, use the object's reference
+        if odom_pose_ref is None:
+            odom_pose_ref = self.odom_pose_ref
+
+        # odometer reference position
+        x_odom_ref = odom_pose_ref[0]
+        y_odom_ref = odom_pose_ref[1]
+        angle_odom_ref = odom_pose_ref[2]
+
+        # robot position in his odometer reference
+        x_odom = odom_pose[0]
+        y_odom = odom_pose[1]
+        angle_odom = odom_pose[2]
+
+        # distance travelled by the robot
+        distance = np.sqrt(x_odom**2 + y_odom**2)
+
+        # angle of the robot in the map frame
+        ang_rotation = np.arctan2(y_odom, x_odom)
+
+        # corrected position in the map frame
+        x_corrected = x_odom_ref + distance * np.cos(ang_rotation + angle_odom_ref)
+        y_corrected = y_odom_ref + distance * np.sin(ang_rotation + angle_odom_ref)
+
+        corrected_pose = np.array([x_corrected, y_corrected, angle_odom + angle_odom_ref])
 
         return corrected_pose
 
@@ -88,7 +113,7 @@ class TinySlam:
 
         # Check if the difference between the original value and the moving average is greater than 10%
         diff = np.abs(lidar_values - lidar_values_ma)
-        mask = diff > 0.1 * lidar_values
+        mask = diff > 0.025 * lidar_values
 
         # Remove values that exceed the threshold
         lidar_values = lidar_values[~mask]
@@ -99,7 +124,7 @@ class TinySlam:
         lidar_dy = y_pose + lidar_values * np.sin(theta_pose + lidar_angles)
         
         # Update free space along the line using Bresenham's algorithm every 5 points
-        for x, y in zip(lidar_dx[::5], lidar_dy[::5]):
+        for x, y in zip(lidar_dx[::2], lidar_dy[::2]):
             self.grid.add_map_line(x_pose, y_pose, x, y, log_odd_free)
         
         # increase points values, obstacule

@@ -223,7 +223,7 @@ def potential_field_control(lidar, current_pose, goal_pose):
     
     # Calculate the gradient
     # gradient = gradient_calculator_closest_wall(lidar.get_sensor_values(), lidar.get_ray_angles(), current_pose, goal_pose, K_obs=400, K_goal=50, d_safe=300)
-    gradient = gradient_calculator_180field_of_lidar(lidar.get_sensor_values(), lidar.get_ray_angles(), current_pose, goal_pose, K_obs=250, K_goal=50, d_safe=50)
+    gradient = gradient_calculator_180field_of_lidar(lidar.get_sensor_values(), lidar.get_ray_angles(), current_pose, goal_pose, K_obs=300, K_goal=50, d_safe=50)
     
     # Now we have the gradient, we can calculate the command to move the robot
     gradient_r, gradient_theta = cartesian_to_polar(gradient[0], gradient[1])
