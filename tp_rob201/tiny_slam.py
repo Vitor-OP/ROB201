@@ -74,20 +74,36 @@ class TinySlam:
         log_odd_free = -0.10  # Log-odds value for free space
         log_odd_occ = 0.35    # Log-odds value for occupied space
         
-        # World coordinates in cartesian
-        lidar_dx = x_pose + lidar_values * np.cos(theta_pose + lidar_angles)
-        lidar_dy = y_pose + lidar_values * np.sin(theta_pose + lidar_angles)
 
         # get array of bool's where the lidar found obstacules
         border = 25
         in_range = lidar_values <= (lidar.max_range - border)
+        
+        lidar_values = lidar_values[in_range]
+        lidar_angles = lidar_angles[in_range]
 
-        # # Update free space along the line using Bresenham's algorithm
+        # Calculate moving average of lidar values
+        window_size = 5
+        lidar_values_ma = np.convolve(lidar_values, np.ones(window_size)/window_size, mode='same')
+
+        # Check if the difference between the original value and the moving average is greater than 10%
+        diff = np.abs(lidar_values - lidar_values_ma)
+        mask = diff > 0.1 * lidar_values
+
+        # Remove values that exceed the threshold
+        lidar_values = lidar_values[~mask]
+        lidar_angles = lidar_angles[~mask]
+        
+        # World coordinates in cartesian
+        lidar_dx = x_pose + lidar_values * np.cos(theta_pose + lidar_angles)
+        lidar_dy = y_pose + lidar_values * np.sin(theta_pose + lidar_angles)
+        
+        # Update free space along the line using Bresenham's algorithm every 5 points
         for x, y in zip(lidar_dx[::5], lidar_dy[::5]):
             self.grid.add_map_line(x_pose, y_pose, x, y, log_odd_free)
         
         # increase points values, obstacule
-        self.grid.add_map_points(lidar_dx[in_range], lidar_dy[in_range], log_odd_occ)
+        self.grid.add_map_points(lidar_dx, lidar_dy, log_odd_occ)
         
         # Apply clamping to log-odds to avoid probability divergence
         self.grid.occupancy_map = np.clip(self.grid.occupancy_map, -4, 4)
