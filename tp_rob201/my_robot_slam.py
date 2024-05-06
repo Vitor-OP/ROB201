@@ -48,12 +48,26 @@ class MyRobotSlam(RobotAbstract):
         Main control function executed at each time step
         """
         
-        # self.corrected_pose = self.odometer_values()
-        self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
+        # Begin without moving to create the base of the map
+        if self.counter < 40:
+            self.tiny_slam.update_map(self.lidar(),self.odometer_values())
+            score = self.tiny_slam.localise(self.lidar(),self.odometer_values())
+            
+            self.counter += 1
+            
+            return {"forward": 0,
+                    "rotation": 0}
         
-        self.tiny_slam.update_map(self.lidar(), self.corrected_pose)
+        # Start moving and only update the map if the robot is localized
+        else:
+            score = self.tiny_slam.localise(self.lidar(), self.odometer_values())
+            if score > 65:
+                self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
+                self.tiny_slam.update_map(self.lidar(), self.corrected_pose)
+                
+        self.counter += 1
         
-        return self.control_tp2()
+        return self.control_tp1()
 
     def control_tp1(self):
         """
@@ -71,8 +85,8 @@ class MyRobotSlam(RobotAbstract):
         # pose = self.odometer_values()
         pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
         
-        # goal = [-520, -480, 0]
-        goal = [-350, 35, 0]
+        goal = [-520, -480, 0]
+        # goal = [-350, 35, 0]
 
         # Compute new command speed to perform obstacle avoidance
         command = potential_field_control(self.lidar(), pose, goal)

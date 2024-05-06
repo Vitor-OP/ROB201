@@ -25,8 +25,40 @@ class TinySlam:
         pose : [x, y, theta] nparray, position of the robot to evaluate, in world coordinates
         """
         # TODO for TP4
+        # This function is left beeing reduntant as the masking already happens in the update_map function, but was left like this on purpose for the sake of the exercise and readability
 
-        score = 0
+        # Extract robot data
+        # x_pose = pose[0]
+        # y_pose = pose[1]
+        # theta_pose = pose[2]
+        
+        lidar_values = lidar.get_sensor_values()
+        lidar_angles = lidar.get_ray_angles()
+        
+        # get array of bool's where the lidar found obstacules
+        in_range = lidar_values <= (lidar.max_range - 25)
+        
+        lidar_values = lidar_values[in_range]
+        lidar_angles = lidar_angles[in_range]
+
+        # Calculate moving average of lidar values
+        lidar_values_ma = np.convolve(lidar_values, np.ones(5)/5, mode='same')
+
+        # Check if the difference between the original value and the moving average is greater than a threshold
+        diff = np.abs(lidar_values - lidar_values_ma)
+        mask = diff < 0.01 * lidar_values
+        
+        # World coordinates in cartesian
+        lidar_dx = pose[0] + lidar_values[mask] * np.cos(pose[2] + lidar_angles[mask])
+        lidar_dy = pose[1] + lidar_values[mask] * np.sin(pose[2] + lidar_angles[mask])
+
+        # get nearest grid point in the map and add its value to score
+        x_px, y_px = self.grid.conv_world_to_map(lidar_dx, lidar_dy)
+        select = np.logical_and(np.logical_and(x_px > 0, x_px < self.grid.x_max_map), np.logical_and(y_px > 0, y_px < self.grid.y_max_map))
+        x_px = x_px[select]
+        y_px = y_px[select]
+
+        score = np.sum(self.grid.occupancy_map[x_px, y_px])
 
         return score
 
@@ -76,7 +108,25 @@ class TinySlam:
         """
         # TODO for TP4
 
-        best_score = 0
+        # score with current reference
+        best_pose_ref  = self.odom_pose_ref
+        best_score = self._score(lidar, self.get_corrected_pose(raw_odom_pose,best_pose_ref))
+
+        # randomly try to find better position close to the current one
+        for i in range(150):
+            delta = np.array([np.random.normal(0, 3, 1), np.random.normal(0, 3, 1), np.random.normal(0, 0.1, 1)])
+            pose_i = self.get_corrected_pose(raw_odom_pose,best_pose_ref+delta.T[0])
+            score = self._score(lidar, pose_i)
+            i += 1
+
+            # updates
+            if score > best_score:
+                best_score = score
+                best_pose_ref = best_pose_ref + delta.T[0]
+                i = 0
+
+        # updates best position
+        self.odom_pose_ref = best_pose_ref
 
         return best_score
 
@@ -99,7 +149,6 @@ class TinySlam:
         log_odd_free = -0.10  # Log-odds value for free space
         log_odd_occ = 0.35    # Log-odds value for occupied space
         
-
         # get array of bool's where the lidar found obstacules
         border = 25
         in_range = lidar_values <= (lidar.max_range - border)
@@ -111,13 +160,13 @@ class TinySlam:
         window_size = 5
         lidar_values_ma = np.convolve(lidar_values, np.ones(window_size)/window_size, mode='same')
 
-        # Check if the difference between the original value and the moving average is greater than 10%
+        # Check if the difference between the original value and the moving average is greater than a threshold
         diff = np.abs(lidar_values - lidar_values_ma)
-        mask = diff > 0.025 * lidar_values
+        mask = diff < 0.01 * lidar_values
 
         # Remove values that exceed the threshold
-        lidar_values = lidar_values[~mask]
-        lidar_angles = lidar_angles[~mask]
+        lidar_values = lidar_values[mask]
+        lidar_angles = lidar_angles[mask]
         
         # World coordinates in cartesian
         lidar_dx = x_pose + lidar_values * np.cos(theta_pose + lidar_angles)
@@ -133,7 +182,7 @@ class TinySlam:
         # Apply clamping to log-odds to avoid probability divergence
         self.grid.occupancy_map = np.clip(self.grid.occupancy_map, -4, 4)
 
-        if self.refresh_counter % 100 == 0:
+        if self.refresh_counter % 10 == 0:
             self.grid.display_cv(pose)
             # self.grid.display_plt(pose)
             self.refresh_counter = 0
