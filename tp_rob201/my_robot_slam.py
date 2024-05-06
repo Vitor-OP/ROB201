@@ -79,7 +79,7 @@ class MyRobotSlam(RobotAbstract):
                 
         else:
             score = self.tiny_slam.localise(self.lidar(), self.odometer_values())
-            if score > 65:
+            if score > 65 and self.path_found == False:
                 self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
                 self.tiny_slam.update_map(self.lidar(), self.corrected_pose)
                 
@@ -95,15 +95,26 @@ class MyRobotSlam(RobotAbstract):
                 # plt.show()
                 
                 path = self.planner.plan(self.corrected_pose, np.array([0, 0, 0]))
-                # print(path)
+                
+                print(path)
                 
                 self.path_found = True
-            
                 
                 self.counter += 1
                 
-                return {"forward": 0,
-                    "rotation": 0}
+                return potential_field_control(self.lidar(), self.corrected_pose, self.path[0])
+                
+            else:
+                if self.path:
+                    command = potential_field_control(self.lidar(), self.corrected_pose, self.path[0])
+                    if np.linalg.norm(self.corrected_pose[:2] - self.path[0][:2]) < 15:
+                        self.path.pop(0)
+                    self.counter += 1
+                    return command
+                else:
+                    #  case when self.path is empty
+                    return {"forward": 0,
+                            "rotation": 0}
         
 
     def control_tp1(self):

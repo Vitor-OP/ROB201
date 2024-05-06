@@ -108,6 +108,8 @@ class OccupancyGrid:
         if isinstance(val, bool):
             self.occupancy_map[points[0], points[1]] = np.logical_or(self.occupancy_map[points[0], points[1]], val)
         else:
+            if self.occupancy_map.dtype == np.bool_:
+                self.occupancy_map = self.occupancy_map.astype(float)
             self.occupancy_map[points[0], points[1]] += val
 
     def add_map_points(self, points_x, points_y, val):
