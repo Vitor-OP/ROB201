@@ -174,7 +174,8 @@ def reactive_obst_avoid(lidar):
     
     # If there is no wall, go random and find a wall    
     if no_wall:
-        rotation_speed = random.uniform(-1, 1)
+        # rotation_speed = random.uniform(-1, 1)
+        rotation_speed = -0.15
         speed = 0.3
     
     # If there is a wall in front and no wall on the left, turn right

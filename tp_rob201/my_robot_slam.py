@@ -14,6 +14,8 @@ from control import potential_field_control, reactive_obst_avoid
 from occupancy_grid import OccupancyGrid
 from planner import Planner
 
+from matplotlib import pyplot as plt
+
 
 # Definition of our robot controller
 class MyRobotSlam(RobotAbstract):
@@ -29,6 +31,9 @@ class MyRobotSlam(RobotAbstract):
 
         # step counter to deal with init and display
         self.counter = 0
+        
+        self.path_found = False
+        self.path = []
 
         # Init SLAM object
         self._size_area = (1200, 800)
@@ -47,6 +52,9 @@ class MyRobotSlam(RobotAbstract):
         """
         Main control function executed at each time step
         """
+                    
+        if self.counter % 500 == 0:
+            print(self.counter)
         
         # Begin without moving to create the base of the map
         if self.counter < 40:
@@ -59,15 +67,44 @@ class MyRobotSlam(RobotAbstract):
                     "rotation": 0}
         
         # Start moving and only update the map if the robot is localized
+        elif self.counter < 500:
+            score = self.tiny_slam.localise(self.lidar(), self.odometer_values())
+            if score > 65:
+                self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
+                self.tiny_slam.update_map(self.lidar(), self.corrected_pose)
+                
+            self.counter += 1
+                
+            return self.control_tp1()
+                
         else:
             score = self.tiny_slam.localise(self.lidar(), self.odometer_values())
             if score > 65:
                 self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
                 self.tiny_slam.update_map(self.lidar(), self.corrected_pose)
                 
-        self.counter += 1
+            if self.path_found == False:
+                new_occupancy_grid = self.tiny_slam.grid.occupancy_map
+                new_occupancy_grid = self.planner.occupancy_grid_threshold(new_occupancy_grid, threshold=-0.5)
+                new_occupancy_grid = self.planner.occupancy_grid_dilate(new_occupancy_grid, radius=1)
+                self.planner.grid.occupancy_map = new_occupancy_grid
+                
+                # plt.imshow(new_occupancy_grid.T, origin='lower',
+                #            extent=[self.occupancy_grid.x_min_world, self.occupancy_grid.x_max_world,
+                #                    self.occupancy_grid.y_min_world, self.occupancy_grid.y_max_world])
+                # plt.show()
+                
+                path = self.planner.plan(self.corrected_pose, np.array([0, 0, 0]))
+                # print(path)
+                
+                self.path_found = True
+            
+                
+                self.counter += 1
+                
+                return {"forward": 0,
+                    "rotation": 0}
         
-        return self.control_tp1()
 
     def control_tp1(self):
         """

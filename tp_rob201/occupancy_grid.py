@@ -105,7 +105,10 @@ class OccupancyGrid:
         points = np.array(points).T
 
         # add value to the points
-        self.occupancy_map[points[0], points[1]] += val
+        if isinstance(val, bool):
+            self.occupancy_map[points[0], points[1]] = np.logical_or(self.occupancy_map[points[0], points[1]], val)
+        else:
+            self.occupancy_map[points[0], points[1]] += val
 
     def add_map_points(self, points_x, points_y, val):
         """
