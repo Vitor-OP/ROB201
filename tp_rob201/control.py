@@ -245,11 +245,11 @@ def potential_field_control(lidar, current_pose, goal_pose):
     # Making the speed inversely proportional to the need to turn (if it needs to turn a lot, speed gets negative to go in reverse)
     dist_to_goal = d_goal_current_pose(current_pose, goal_pose)
     if dist_to_goal > 100:
-        speed = (0.5 - abs(rotation_speed))*0.4
+        speed = (0.7 - abs(rotation_speed))*0.3
         
     # If the robot is close to the goal, slow down proportionally to the distance
     else: 
-        speed = (0.5 - abs(rotation_speed))*(dist_to_goal/100)*0.4
+        speed = (0.7 - abs(rotation_speed))*(dist_to_goal/100)*0.3
 
     # If the robot is very close to the goal, stops
     if dist_to_goal < 10:
