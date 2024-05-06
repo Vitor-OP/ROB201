@@ -31,7 +31,7 @@ class MyRobotSlam(RobotAbstract):
         self.counter = 0
 
         # Init SLAM object
-        self._size_area = (800, 800)
+        self._size_area = (1200, 800)
         self.occupancy_grid = OccupancyGrid(x_min=- self._size_area[0],
                                             x_max=self._size_area[0],
                                             y_min=- self._size_area[1],
@@ -48,13 +48,17 @@ class MyRobotSlam(RobotAbstract):
         Main control function executed at each time step
         """
         
-        return self.control_tp2()
+        # self.corrected_pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
+        self.corrected_pose = self.odometer_values()
+        
+        self.tiny_slam.update_map(self.lidar(), self.corrected_pose)
+        
+        return self.control_tp1()
 
     def control_tp1(self):
         """
         Control function for TP1
         """
-        self.tiny_slam.compute()
 
         # Compute new command speed to perform obstacle avoidance
         command = reactive_obst_avoid(self.lidar())
@@ -66,8 +70,8 @@ class MyRobotSlam(RobotAbstract):
         """
         pose = self.odometer_values()
         
-        goal = [-520, -480, 0]
-        # goal = [-350, 35, 0]
+        # goal = [-520, -480, 0]
+        goal = [-350, 35, 0]
 
         # Compute new command speed to perform obstacle avoidance
         command = potential_field_control(self.lidar(), pose, goal)

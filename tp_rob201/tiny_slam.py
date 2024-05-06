@@ -14,6 +14,9 @@ class TinySlam:
 
         # Origin of the odom frame in the map frame
         self.odom_pose_ref = np.array([0, 0, 0])
+        
+        self.refresh_counter = 0
+        
 
     def _score(self, lidar, pose):
         """
@@ -59,21 +62,42 @@ class TinySlam:
         pose : [x, y, theta] nparray, corrected pose in world coordinates
         """
         # TODO for TP3
-
-    def compute(self):
-        """ Useless function, just for the exercise on using the profiler """
-        # Remove after TP1
-
-        ranges = np.random.rand(3600)
-        ray_angles = np.arange(-np.pi, np.pi, np.pi / 1800)
-
-        # Poor implementation of polar to cartesian conversion
-        # points = []
-        # for i in range(3600):
-        #     pt_x = ranges[i] * np.cos(ray_angles[i])
-        #     pt_y = ranges[i] * np.sin(ray_angles[i])
-        #     points.append([pt_x, pt_y])
         
-        # Good implementation (using numpy)
-        points = np.array([ranges * np.cos(ray_angles), ranges * np.sin(ray_angles)]).T
+        # Extract robot data
+        x_pose = pose[0]
+        y_pose = pose[1]
+        theta_pose = pose[2]
         
+        lidar_values = lidar.get_sensor_values()
+        lidar_angles = lidar.get_ray_angles()
+        
+        log_odd_free = -0.10  # Log-odds value for free space
+        log_odd_occ = 0.35    # Log-odds value for occupied space
+        
+        # World coordinates in cartesian
+        lidar_dx = x_pose + lidar_values * np.cos(theta_pose + lidar_angles)
+        lidar_dy = y_pose + lidar_values * np.sin(theta_pose + lidar_angles)
+
+        # get array of bool's where the lidar found obstacules
+        border = 25
+        in_range = lidar_values <= (lidar.max_range - border)
+
+        # # Update free space along the line using Bresenham's algorithm
+        for x, y in zip(lidar_dx[::5], lidar_dy[::5]):
+            self.grid.add_map_line(x_pose, y_pose, x, y, log_odd_free)
+        
+        # increase points values, obstacule
+        self.grid.add_map_points(lidar_dx[in_range], lidar_dy[in_range], log_odd_occ)
+        
+        # Apply clamping to log-odds to avoid probability divergence
+        self.grid.occupancy_map = np.clip(self.grid.occupancy_map, -4, 4)
+
+        if self.refresh_counter % 100 == 0:
+            self.grid.display_cv(pose)
+            # self.grid.display_plt(pose)
+            self.refresh_counter = 0
+        else:
+            self.refresh_counter += 1
+            
+            
+            
