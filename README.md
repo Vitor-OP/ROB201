@@ -317,16 +317,3 @@ n any case the attraction works as it should just the goal setting which was not
     return command
 ```
 
-
-
-## Author and Acknowledments
-- Guilherme TROFINO:
-  - [![Linkedin](https://i.stack.imgur.com/gVE0j.png) LinkedIn](https://www.linkedin.com/in/guilherme-trofino/)
-  - [![GitHub](https://i.stack.imgur.com/tskMh.png) GitHub](https://github.com/tr0fin0)
-
-
-We greatly appreciate our [ROB201](https://perso.ensta-paris.fr/~manzaner/Cours/ROB201/) teachers at [ENSTA](https://www.ensta-paris.fr/):
-- Emmanuel Battesti
-
-More information in the [**Place-Bot** GitHub repository](https://github.com/emmanuel-battesti/place-bot). It will be installed automatically with the above procedure, but it is strongly recommended to read the [*Place-Bot* documentation](https://github.com/emmanuel-battesti/place-bot#readme).
-
